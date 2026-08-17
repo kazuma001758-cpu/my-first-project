@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>SW2.5 - 戦闘準備 (3vs3)</title>
+	<style>
+		body {
+			background-color: #0d0d0d;
+			color: #e0e0e0;
+			font-family: sans-serif;
+			padding: 20px;
+		}
+
+		.setup-container {
+			max-width: 900px;
+			margin: 0 auto;
+			background-color: #1a1a1a;
+			border: 1px solid #333;
+			border-radius: 8px;
+			padding: 25px;
+		}
+
+		h1 {
+			color: #f4a261;
+			text-align: center;
+		}
+
+		.section-title {
+			border-bottom: 1px solid #444;
+			padding-bottom: 5px;
+			margin-top: 20px;
+		}
+
+		.player-title {
+			color: #4ea8de;
+		}
+
+		.enemy-title {
+			color: #e63946;
+		}
+
+		.form-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.card-select {
+			background-color: #252525;
+			padding: 15px;
+			border-radius: 6px;
+			border: 1px solid #444;
+		}
+
+		label {
+			display: block;
+			font-size: 0.85rem;
+			color: #aaa;
+			margin-bottom: 5px;
+		}
+
+		select {
+			width: 100%;
+			padding: 8px;
+			background-color: #2a2a2a;
+			color: #fff;
+			border: 1px solid #555;
+			border-radius: 4px;
+		}
+
+		.btn-submit {
+			display: block;
+			width: 100%;
+			padding: 14px;
+			background-color: #e63946;
+			color: white;
+			font-weight: bold;
+			border: none;
+			border-radius: 6px;
+			font-size: 1.2rem;
+			cursor: pointer;
+			margin-top: 20px;
+		}
+
+		.btn-submit:hover {
+			background-color: #d62828;
+		}
+
+		.select-group {
+			margin-bottom: 10px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div class="setup-container">
+		<h1>⚔️ 戦闘準備 (最大 3 vs 3)</h1>
+
+		<form th:action="@{/battle/start}" th:object="${setupForm}" method="post">
+
+			<!-- 🛡 プレイヤー選択 & 武器選択エリア (最大3人) -->
+			<h2 class="section-title player-title">🛡 プレイヤー陣営 (最大3名)</h2>
+			<div class="form-grid">
+				<div class="card-select" th:each="i : ${#numbers.sequence(0, 2)}">
+					<label th:text="'プレイヤー Slot ' + (${i} + 1)"></label>
+
+					<!-- プレイヤー選択 -->
+					<div class="select-group">
+						<select th:field="*{playerIds[__${i}__]}">
+							<option value="0">-- 選択なし (参加しない) --</option>
+							<option th:each="p : ${players}" th:value="${p.id}"
+								th:text="${p.name} + ' (HP:' + ${p.hp} + ')'">
+							</option>
+						</select>
+					</div>
+
+					<!-- 武器選択 (追加) -->
+					<div class="select-group">
+						<label>装備武器:</label>
+						<select th:field="*{weaponIds[__${i}__]}">
+							<option value="0">-- 規定の装備 (デフォルト) --</option>
+							<option th:each="w : ${weapons}" th:value="${w.id}"
+								th:text="${w.name} + ' (威力:' + ${w.power} + ' / C値:' + ${w.critical} + ')'">
+							</option>
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<!-- ⚔ モンスター選択エリア (変更なし) -->
+			<h2 class="section-title enemy-title">⚔ モンスター陣営 (最大3体)</h2>
+			<div class="form-grid">
+				<div class="card-select" th:each="i : ${#numbers.sequence(0, 2)}">
+					<label th:text="'モンスター Slot ' + (${i} + 1)"></label>
+					<select th:field="*{monsterIds[__${i}__]}">
+						<option value="0">-- 選択なし (出現しない) --</option>
+						<option th:each="m : ${monsters}" th:value="${m.id}"
+							th:text="${m.name} + ' (EXP:' + ${m.exp} + ')'">
+						</option>
+					</select>
+				</div>
+			</div>
+
+			<button type="submit" class="btn-submit">⚔️ このメンバーで戦闘開始！</button>
+		</form>
+	</div>
+
+</body>
+
+</html>

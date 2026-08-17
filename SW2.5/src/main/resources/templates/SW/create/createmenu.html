@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>SW2.5</title>
+</head>
+
+<body>
+	<h1>データ追加</h1>
+
+	<hr>
+
+	<div style="margin-bottom: 20px; display: flex; gap: 10px;">
+	    <a th:href="@{/players/new}" class="btn btn-secondary">
+	        🛡️ プレイヤーを追加する
+	    </a>
+	    <a th:href="@{/weapons/new}" class="btn btn-secondary">
+	        ⚔️ 武器を追加する
+	    </a>
+	    <a th:href="@{/monsters/new}" class="btn btn-secondary">
+	        👾 モンスターを追加する
+	    </a>
+	</div>
+	<p style="margin-top: 20px;">
+	    <a th:href="@{/}" class="btn btn-secondary">トップ画面へ戻る</a>
+	</p>
+</body>
+

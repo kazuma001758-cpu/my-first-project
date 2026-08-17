@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>武器追加</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			padding: 20px;
+			max-width: 500px;
+			margin: auto;
+		}
+
+		.form-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 5px;
+			font-weight: bold;
+		}
+
+		input[type="text"],
+		input[type="number"] {
+			width: 100%;
+			padding: 8px;
+			box-sizing: border-box;
+		}
+
+		.btn {
+			padding: 10px 15px;
+			background-color: #007bff;
+			color: white;
+			border: none;
+			cursor: pointer;
+			text-decoration: none;
+			display: inline-block;
+		}
+
+		.btn-secondary {
+			background-color: #6c757d;
+		}
+	</style>
+</head>
+
+<body>
+	<h2>⚔️ 新しい武器を追加</h2>
+	<form th:action="@{/weapons}" th:object="${weapon}" method="post">
+		<div class="form-group">
+			<label for="name">武器名:</label>
+			<input type="text" id="name" th:field="*{name}" required placeholder="例: ロングソード" />
+		</div>
+		<div class="form-group">
+			<label for="power">威力:</label>
+			<input type="number" id="power" th:field="*{power}" min="0" max="100" required placeholder="例: 20" />
+		</div>
+
+		<!-- クリティカル値の入力フィールドを追加 -->
+		<div class="form-group">
+			<label for="critical">クリティカル値 (C値):</label>
+			<input type="number" id="critical" th:field="*{critical}" min="8" max="13" value="10" required
+				placeholder="例: 10" />
+		</div>
+		<button type="submit" class="btn">登録する</button>
+		<a th:href="@{/SW/create/createmenu}" class="btn btn-secondary">戻る</a>
+	</form>
+</body>
+
+</html>

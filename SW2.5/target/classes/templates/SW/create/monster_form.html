@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>モンスター追加</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        .btn { padding: 10px 15px; background-color: #28a745; color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-secondary { background-color: #6c757d; }
+    </style>
+</head>
+<body>
+	<h2>👾 多部位モンスター追加</h2>
+
+	<form th:action="@{/monsters}" th:object="${monster}" method="post">
+	    <!-- 基本情報 -->
+	    <div class="form-group">
+	        <label>モンスター名:</label>
+	        <input type="text" th:field="*{name}" required placeholder="ドラゴンフォートレス" />
+	    </div>
+	    
+	    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+	        <div>
+	            <label>生命抵抗力:</label>
+	            <input type="number" th:field="*{lifeResist}" required />
+	        </div>
+	        <div>
+	            <label>精神抵抗力:</label>
+	            <input type="number" th:field="*{spiritResist}" required />
+	        </div>
+	        <!-- ★ コアの有無選択 -->
+	        <div style="display: flex; align-items: center; gap: 5px; margin-top: 20px;">
+	            <input type="checkbox" id="hasCore" th:field="*{hasCore}" />
+	            <label for="hasCore">コア部位あり（チェックがない場合は全部位破壊で倒せる）</label>
+	        </div>
+	    </div>
+
+	    <h3 style="margin-top: 20px;">部位設定（最大10箇所）</h3>
+	    
+	    <table border="1" style="border-collapse: collapse; width: 100%;">
+	        <thead>
+	            <tr>
+	                <th>No</th>
+	                <th>部位名 (例: 牙(頭部))</th>
+	                <th>コア部位</th>
+	                <th>攻撃解除に必要な部位</th>
+	                <th>命中</th>
+	                <th>打撃点</th>
+	                <th>回避</th>
+	                <th>防護点</th>
+	                <th>HP</th>
+	            </tr>
+	        </thead>
+	        <tbody>
+	            <tr th:each="part, stat : *{parts}">
+	                <td th:text="${stat.count}">1</td>
+	                <td><input type="text" th:field="*{parts[__${stat.index}__].partName}" placeholder="空欄でスキップ" /></td>
+	                <!-- ★ コア部位フラグ -->
+	                <td style="text-align: center;">
+	                    <input type="checkbox" th:field="*{parts[__${stat.index}__].core}" />
+	                </td>
+	                <!-- ★ 保護部位の番号（例: 2番目の部位を倒すまで攻撃不可） -->
+	                <td>
+	                    <select th:field="*{parts[__${stat.index}__].protectedByPartIndex}">
+	                        <option value="">なし（制限なし）</option>
+	                        <option value="1">1番目の部位を破壊後</option>
+	                        <option value="2">2番目の部位を破壊後</option>
+	                        <option value="3">3番目の部位を破壊後</option>
+	                        <option value="4">4番目の部位を破壊後</option>
+	                        <option value="5">5番目の部位を破壊後</option>
+	                    </select>
+	                </td>
+	                <td><input type="number" th:field="*{parts[__${stat.index}__].accuracy}" style="width:45px;" /></td>
+	                <td><input type="number" th:field="*{parts[__${stat.index}__].attack}" style="width:45px;" /></td>
+	                <td><input type="number" th:field="*{parts[__${stat.index}__].evasion}" style="width:45px;" /></td>
+	                <td><input type="number" th:field="*{parts[__${stat.index}__].defense}" style="width:45px;" /></td>
+	                <td><input type="number" th:field="*{parts[__${stat.index}__].hp}" style="width:55px;" /></td>
+	            </tr>
+	        </tbody>
+	    </table>
+
+	    <button type="submit" class="btn" style="margin-top: 15px;">登録する</button>
+	</form>
