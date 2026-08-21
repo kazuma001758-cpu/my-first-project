@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>TRPG 戦闘ダメージシミュレーター</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	
+	<style>
+		/* --- 基本のベーススタイル --- */
+		@charset "UTF-8";
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		body {
+			background-color: #0b132b;
+			color: #f4f5f6;
+			font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+		}
+
+		/* --- ヘッダー --- */
+		header {
+			background-color: #1c2541;
+			border-bottom: 2px solid #c5a880;
+			padding: 1rem 1.5rem;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		header h1 {
+			font-size: 1.5rem;
+			font-weight: bold;
+			letter-spacing: 0.05em;
+			color: #c5a880;
+		}
+
+		.header-badges {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+		}
+
+		/* --- 接続ステータスバッジ --- */
+		#connectionBadge {
+			font-size: 0.75rem;
+			font-weight: 600;
+			padding: 0.25rem 0.75rem;
+			border-radius: 9999px;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		}
+
+		.badge-checking {
+			background-color: rgba(245, 158, 11, 0.2);
+			color: #f59e0b;
+			border: 1px solid rgba(245, 158, 11, 0.3);
+		}
+
+		.badge-online {
+			background-color: rgba(16, 185, 129, 0.2);
+			color: #10b981;
+			border: 1px solid rgba(16, 185, 129, 0.3);
+		}
+
+		.badge-offline {
+			background-color: rgba(245, 158, 11, 0.2);
+			color: #f59e0b;
+			border: 1px solid rgba(245, 158, 11, 0.3);
+		}
+
+		.badge-system {
+			font-size: 0.75rem;
+			background-color: #5bc0be;
+			color: #0b132b;
+			font-weight: 600;
+			padding: 0.25rem 0.75rem;
+			border-radius: 9999px;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		}
+
+		/* --- レイアウト構造 --- */
+		main {
+			flex-grow: 1;
+			padding: 1.5rem;
+			max-width: 1200px;
+			margin: 0 auto;
+			width: 100%;
+			display: grid;
+			grid-template-columns: 1fr;
+			gap: 1.5rem;
+		}
+
+		@media (min-width: 1024px) {
+			main {
+				grid-template-columns: 7fr 5fr;
+				padding: 2rem;
+			}
+		}
+
+		/* --- ボックスデザイン (TRPG・ファンタジー風枠線) --- */
+		.panel-section {
+			background-color: #1c2541;
+			border-radius: 0.5rem;
+			padding: 1.25rem;
+			border: 2px solid #c5a880;
+			box-shadow: 0 0 15px rgba(197, 168, 128, 0.2);
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		.panel-section h2 {
+			font-size: 1.125rem;
+			font-weight: bold;
+			border-bottom: 1px solid #4b5563;
+			padding-bottom: 0.5rem;
+			color: #c5a880;
+			margin-bottom: 0.5rem;
+		}
+
+		/* --- フォームコントロール --- */
+		.form-grid {
+			display: grid;
+			grid-template-columns: 1fr;
+			gap: 1rem;
+		}
+
+		@media (min-width: 768px) {
+			.form-grid {
+				grid-template-columns: 1fr 1fr;
+			}
+
+			.form-grid-3 {
+				grid-template-columns: 1fr 1fr 1fr;
+			}
+		}
+
+		.form-group {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.form-group label {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: #d1d5db;
+		}
+
+		.form-group input,
+		.form-group select {
+			width: 100%;
+			background-color: #0b132b;
+			color: #ffffff;
+			border-radius: 0.25rem;
+			padding: 0.5rem;
+			border: 1px solid #4b5563;
+			font-size: 0.95rem;
+			transition: border-color 0.2s, box-shadow 0.2s;
+		}
+
+		.form-group input:focus,
+		.form-group select:focus {
+			outline: none;
+			border-color: #c5a880;
+			box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.4);
+		}
+
+		/* 境界線 */
+		.divider {
+			border-top: 1px solid #374151;
+			padding-top: 1rem;
+			margin-top: 0.5rem;
+		}
+
+		.dashed-divider {
+			border-top: 1px dashed #374151;
+			padding-top: 0.75rem;
+			margin-top: 0.25rem;
+		}
+
+		/* --- 特殊セクション --- */
+		.dual-wield-section {
+			display: grid;
+			grid-template-columns: 1fr;
+			gap: 1rem;
+			transition: opacity 0.2s;
+		}
+
+		@media (min-width: 768px) {
+			.dual-wield-section {
+				grid-template-columns: 1fr 1fr;
+			}
+		}
+
+		.opacity-disabled {
+			opacity: 0.4;
+			pointer-events: none;
+		}
+
+		/* --- バトル開始ボタン --- */
+		#battleBtn {
+			width: 100%;
+			background: linear-gradient(to right, #b91c1c, #d97706);
+			color: #ffffff;
+			font-weight: 800;
+			font-size: 1.25rem;
+			padding: 1rem;
+			border-radius: 0.5rem;
+			border: 2px solid #fde047;
+			cursor: pointer;
+			box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+			transition: all 0.2s ease-in-out;
+		}
+
+		#battleBtn:hover {
+			background: linear-gradient(to right, #dc2626, #f59e0b);
+			transform: translateY(-2px);
+		}
+
+		#battleBtn:active {
+			transform: translateY(0);
+		}
+
+		/* --- 右サイド: バトル結果エリア --- */
+		.battle-results-panel {
+			background-color: #1c2541;
+			border-radius: 0.5rem;
+			padding: 1.25rem;
+			border: 2px solid #c5a880;
+			box-shadow: 0 0 15px rgba(197, 168, 128, 0.2);
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			min-height: 400px;
+		}
+
+		.battle-results-header {
+			font-size: 1.125rem;
+			font-weight: bold;
+			border-bottom: 1px solid #4b5563;
+			padding-bottom: 0.5rem;
+			color: #c5a880;
+			text-align: center;
+			margin-bottom: 1rem;
+		}
+
+		/* 未戦闘プレースホルダー */
+		.placeholder-box {
+			text-align: center;
+			padding: 3rem 0;
+			color: #9ca3af;
+		}
+
+		.placeholder-box i {
+			font-size: 3rem;
+			margin-bottom: 1rem;
+			opacity: 0.5;
+			display: block;
+		}
+
+		/* バトル出力ログ装飾 */
+		.log-container {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		.phase-card {
+			padding: 1rem;
+			border-radius: 0.25rem;
+		}
+
+		.player-phase {
+			background-color: rgba(30, 58, 138, 0.3);
+			border-left: 4px solid #3b82f6;
+		}
+
+		.monster-phase {
+			background-color: rgba(127, 29, 29, 0.3);
+			border-left: 4px solid #ef4444;
+		}
+
+		.no-counter-phase {
+			background-color: rgba(6, 78, 59, 0.3);
+			border: 1px solid rgba(16, 185, 129, 0.5);
+			padding: 0.5rem;
+			text-align: center;
+			color: #a7f3d0;
+			font-size: 0.75rem;
+			border-radius: 0.25rem;
+		}
+
+		.phase-card h3 {
+			font-weight: bold;
+			margin-bottom: 0.5rem;
+		}
+
+		.player-phase h3 {
+			color: #93c5fd;
+		}
+
+		.monster-phase h3 {
+			color: #fca5a5;
+		}
+
+		.log-row {
+			display: flex;
+			justify-content: space-between;
+			font-size: 0.75rem;
+			margin-bottom: 0.25rem;
+		}
+
+		.log-row-total {
+			display: flex;
+			justify-content: space-between;
+			font-size: 0.875rem;
+			font-weight: bold;
+			border-top: 1px solid rgba(255, 255, 255, 0.1);
+			margin-top: 0.5rem;
+			padding-top: 0.25rem;
+		}
+
+		.player-phase .log-row-total {
+			color: #60a5fa;
+		}
+
+		.monster-phase .log-row-total {
+			color: #f87171;
+		}
+
+		.dmg-output-badge {
+			margin-top: 0.5rem;
+			padding: 0.5rem;
+			background-color: #0b132b;
+			text-align: right;
+			font-size: 0.875rem;
+			font-weight: bold;
+		}
+
+		.player-phase .dmg-output-badge {
+			color: #fca5a5;
+		}
+
+		.monster-phase .dmg-output-badge {
+			color: #f87171;
+		}
+
+		.dmg-output-badge span {
+			font-size: 1.25rem;
+		}
+
+		.player-phase .dmg-output-badge span {
+			color: #fde047;
+		}
+
+		/* HPサマリー */
+		.hp-summary-box {
+			background-color: #1c2541;
+			padding: 0.75rem;
+			border-radius: 0.25rem;
+			border: 1px solid #374151;
+			text-align: center;
+			font-size: 0.75rem;
+			color: #9ca3af;
+		}
+
+		.hp-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.5rem;
+			margin-top: 0.25rem;
+		}
+
+		.hp-card {
+			background-color: #0b132b;
+			padding: 0.25rem;
+			color: #ffffff;
+		}
+
+		.hp-arrow-val {
+			font-size: 1.125rem;
+			font-weight: bold;
+		}
+
+		.hp-arrow-val span {
+			color: #f87171;
+		}
+
+		/* 詳細システムログ */
+		#detailLog {
+			margin-top: 1rem;
+			padding: 0.75rem;
+			background-color: #0b132b;
+			border-radius: 0.25rem;
+			border: 1px solid #374151;
+			font-size: 0.875rem;
+			max-height: 240px;
+			overflow-y: auto;
+			font-family: monospace;
+			color: #d1d5db;
+		}
+
+		#detailLog .log-title {
+			font-weight: bold;
+			border-bottom: 1px solid #374151;
+			padding-bottom: 0.25rem;
+			margin-bottom: 0.5rem;
+			color: #fde047;
+			font-size: 0.75rem;
+		}
+
+		/* フッター */
+		footer {
+			background-color: #0b132b;
+			text-align: center;
+			padding: 1.5rem 0;
+			border-top: 1px solid #1f2937;
+			font-size: 0.75rem;
+			color: #6b7280;
+		}
+
+		/* アニメーション */
+		.animate-fade-in {
+			animation: fadeIn 0.4s ease-out forwards;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(10px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.loader-spin {
+			animation: spin 1s linear infinite;
+		}
+
+		@keyframes spin {
+			from {
+				transform: rotate(0deg);
+			}
+
+			to {
+				transform: rotate(360deg);
+			}
+		}
+	</style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+	<header>
+		<h1>
+			<i class="fa-solid fa-dice-d20 mr-2"></i>TRPG COMBAT SIMULATOR
+		</h1>
+		<div class="header-badges">
+			<span id="connectionBadge" class="badge-checking">
+				<i class="fa-solid fa-circle-notch fa-spin mr-1"></i>接続確認中
+			</span>
+			<span class="badge-system">
+				Sword World 2.5 Compatible
+			</span>
+		</div>
+	</header>
+
+	<main>
+
+		<div class="space-y-6" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+			<section class="panel-section">
+				<h2>
+					<i class="fa-solid fa-user-shield mr-2"></i>1. プレイヤー選択 と 装備品設定
+				</h2>
+
+				<div class="form-grid">
+					<div class="form-group">
+						<label>キャラクター選択</label>
+						<select id="playerSelect">
+							<option value="custom">-- 新規/手動作成 --</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label>追加ダメージ (固定値)</label>
+						<input type="number" id="pAddDamage" value="6">
+					</div>
+					<div class="form-group">
+						<label>最大HP</label>
+						<input type="number" id="pMaxHp" value="30">
+					</div>
+					<div class="form-group">
+						<label>防護点</label>
+						<input type="number" id="pDefense" value="4">
+					</div>
+				</div>
+
+				<div class="divider form-grid form-grid-3">
+					<div class="form-group">
+						<label>武器</label>
+						<select id="weaponSelect">
+						</select>
+					</div>
+					<div class="form-group">
+						<label>用法スタイル</label>
+						<select id="weaponStyle">
+							<option value="1">片手持ち (1H)</option>
+							<option value="2">両手持ち (2H)</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label>使用手番スロット</label>
+						<select id="equipHand">
+							<option value="1">右手攻撃</option>
+							<option value="2">左手攻撃</option>
+						</select>
+					</div>
+				</div>
+
+				<div id="dualWieldDiv" class="dashed-divider dual-wield-section">
+					<div class="form-group">
+						<label style="font-size: 0.75rem; color: #9ca3af;">もう片方の手の武器 (二刀流時)</label>
+						<select id="secondWeaponSelect" style="font-size: 0.875rem;">
+							<option value="none">なし (片手盾/空き手)</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label style="font-size: 0.75rem; color: #9ca3af;">今回の手番で攻撃する武器</label>
+						<select id="activeHandSelect" style="font-size: 0.875rem;">
+							<option value="right">右手の武器で攻撃</option>
+							<option value="left">左手の武器で攻撃</option>
+						</select>
+					</div>
+				</div>
+			</section>
+
+			<section class="panel-section">
+				<h2>
+					<i class="fa-solid fa-dragon mr-2"></i>2. 攻撃対象モンスター
+				</h2>
+				<div class="form-grid">
+					<div class="form-group">
+						<label>モンスター選択</label>
+						<select id="monsterSelect">
+							<option value="custom">-- 手動/新規作成 --</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label>最大HP</label>
+						<input type="number" id="mMaxHp" value="15">
+					</div>
+					<div class="form-group">
+						<label>現在の現在HP</label>
+						<input type="number" id="mCurrentHp" value="15" style="color: #fde047; font-weight: bold;">
+					</div>
+					<div class="form-group">
+						<label>防護点</label>
+						<input type="number" id="mDefense" value="2">
+					</div>
+					<div class="form-group">
+						<label>打撃点 (攻撃力)</label>
+						<input type="number" id="mAttack" value="4">
+					</div>
+				</div>
+			</section>
+
+			<button id="battleBtn">
+				<i class="fa-solid fa-swords mr-2"></i>ダイスを振って戦闘開始！
+			</button>
+
+		</div>
+
+		<div class="flex-col" style="display: flex; flex-direction: column; gap: 1.5rem;">
+			<section class="battle-results-panel">
+				<div>
+					<h2 class="battle-results-header">
+						<i class="fa-solid fa-shield-halved mr-2"></i>BATTLE LOG ＆ STATUS
+					</h2>
+
+					<div id="battleVisuals">
+						<div class="placeholder-box">
+							<i class="fa-solid fa-swords"></i>
+							攻撃を行ってください。
+						</div>
+					</div>
+				</div>
+
+				<div id="detailLog" class="hidden">
+				</div>
+			</section>
+		</div>
+	</main>
+
+	<footer>
+		© 2026 TRPG Web Combat Tool. Developed for Java Server Environment.
+	</footer>
+
+	<script>
+		const API_URL = "http://localhost:8080";
+		let playersData = [];
+		let monstersData = [];
+		let weaponsData = [];
+		let isOfflineMode = false;
+
+		const playerSelect = document.getElementById("playerSelect");
+		const pAddDamage = document.getElementById("pAddDamage");
+		const pMaxHp = document.getElementById("pMaxHp");
+		const pDefense = document.getElementById("pDefense");
+		const weaponSelect = document.getElementById("weaponSelect");
+		const secondWeaponSelect = document.getElementById("secondWeaponSelect");
+		const weaponStyle = document.getElementById("weaponStyle");
+		const equipHand = document.getElementById("equipHand");
+		const activeHandSelect = document.getElementById("activeHandSelect");
+		const monsterSelect = document.getElementById("monsterSelect");
+		const mMaxHp = document.getElementById("mMaxHp");
+		const mCurrentHp = document.getElementById("mCurrentHp");
+		const mDefense = document.getElementById("mDefense");
+		const mAttack = document.getElementById("mAttack");
+		const battleBtn = document.getElementById("battleBtn");
+		const battleVisuals = document.getElementById("battleVisuals");
+		const detailLog = document.getElementById("detailLog");
+		const connectionBadge = document.getElementById("connectionBadge");
+
+		const MOCK_DATA = {
+			players: [{ name: "戦士アルク", additionalDamage: 6, maxHp: 30, defense: 4 }],
+			monsters: [
+				{ name: "ゴブリン", hp: 15, defense: 2, attack: 4 },
+				{ name: "ボルグ", hp: 35, defense: 4, attack: 6 },
+				{ name: "トロール", hp: 60, defense: 6, attack: 8 }
+			],
+			weapons: [
+				{ name: "ナイフ", critical: 10, row: 1, usage: "1H" },
+				{ name: "ショートソード", critical: 10, row: 5, usage: "1H" },
+				{ name: "ダガー", critical: 10, row: 3, usage: "1H" },
+				{ name: "レイピア", critical: 10, row: 8, usage: "1H" },
+				{ name: "バスタードソード", critical: 10, row: 15, usage: "1H両" },
+				{ name: "バスタードソード(両手)", critical: 10, row: 20, usage: "2H" },
+				{ name: "フランベルジュ", critical: 10, row: 18, usage: "1H両" },
+				{ name: "フランベルジュ(両手)", critical: 10, row: 23, usage: "2H" },
+				{ name: "グレートソード", critical: 10, row: 25, usage: "2H" },
+				{ name: "ヘビーメイス", critical: 12, row: 30, usage: "2H" }
+			]
+		};
+
+		const MOCK_DAMAGE_TABLE = [
+			[0, 0, 0, 1, 2, 2, 3, 3, 4, 4], [0, 0, 0, 1, 2, 2, 3, 3, 4, 4], [0, 0, 0, 1, 2, 3, 4, 4, 4, 4],
+			[0, 0, 1, 1, 2, 3, 4, 4, 4, 5], [0, 0, 1, 2, 2, 3, 4, 4, 5, 5], [0, 1, 1, 2, 2, 3, 4, 5, 5, 5],
+			[0, 1, 1, 2, 3, 3, 4, 5, 5, 5], [0, 1, 1, 2, 3, 4, 4, 5, 5, 6], [0, 1, 2, 2, 3, 4, 4, 5, 6, 6],
+			[0, 1, 2, 3, 3, 4, 4, 5, 6, 7], [1, 1, 2, 3, 3, 4, 5, 5, 6, 7], [1, 2, 2, 3, 3, 4, 5, 6, 6, 7],
+			[1, 2, 2, 3, 4, 4, 5, 6, 6, 7], [1, 2, 3, 3, 4, 4, 5, 6, 7, 7], [1, 2, 3, 4, 4, 4, 5, 6, 7, 8],
+			[1, 2, 3, 4, 4, 5, 5, 6, 7, 8], [1, 2, 3, 4, 4, 5, 6, 7, 7, 8], [1, 2, 3, 4, 5, 5, 6, 7, 7, 8],
+			[1, 2, 3, 4, 5, 6, 6, 7, 7, 8], [1, 2, 3, 4, 5, 6, 7, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+			[1, 2, 3, 4, 6, 6, 7, 8, 9, 10], [1, 2, 3, 5, 5, 6, 7, 8, 9, 10], [2, 2, 3, 5, 6, 7, 7, 8, 9, 10],
+			[2, 3, 4, 5, 6, 7, 7, 8, 9, 10], [2, 3, 4, 5, 6, 7, 8, 8, 9, 10], [2, 3, 4, 5, 6, 8, 8, 9, 9, 10],
+			[2, 3, 4, 6, 6, 8, 8, 9, 9, 10], [2, 3, 4, 6, 6, 8, 9, 9, 10, 10], [2, 3, 4, 6, 7, 8, 9, 9, 10, 10],
+			[2, 4, 4, 6, 7, 8, 9, 10, 10, 10]
+		];
+		for (let i = 31; i <= 100; i++) { MOCK_DAMAGE_TABLE[i] = MOCK_DAMAGE_TABLE[i - 15] || MOCK_DAMAGE_TABLE[15]; }
+
+		window.addEventListener("DOMContentLoaded", loadMasterData);
+
+		async function loadMasterData() {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 1500);
+				const res = await fetch(`${API_URL}/api/data`, { signal: controller.signal });
+				clearTimeout(timeoutId);
+
+				if (!res.ok) throw new Error();
+				const data = await res.json();
+				playersData = data.players; monstersData = data.monsters; weaponsData = data.weapons;
+				isOfflineMode = false; updateStatusBadge(true);
+			} catch (err) {
+				playersData = MOCK_DATA.players; monstersData = MOCK_DATA.monsters; weaponsData = MOCK_DATA.weapons;
+				isOfflineMode = true; updateStatusBadge(false);
+			}
+			populateDropdowns();
+		}
+
+		function updateStatusBadge(online) {
+			if (online) {
+				connectionBadge.className = "badge-online";
+				connectionBadge.innerHTML = '<i class="fa-solid fa-circle text-[8px] mr-1.5 align-middle"></i>Javaサーバー接続中';
+			} else {
+				connectionBadge.className = "badge-offline";
+				connectionBadge.innerHTML = '<i class="fa-solid fa-circle text-[8px] mr-1.5 align-middle text-amber-400 animate-pulse"></i>シミュレーションモード';
+			}
+		}
+
+		function populateDropdowns() {
+			playerSelect.innerHTML = '<option value="custom">-- 新規/手動作成 --</option>';
+			monsterSelect.innerHTML = '<option value="custom">-- 手動/新規作成 --</option>';
+			weaponSelect.innerHTML = ''; secondWeaponSelect.innerHTML = '<option value="none">なし (片手盾/空き手)</option>';
+
+			playersData.forEach(p => { const opt = new Option(p.name, p.name); playerSelect.add(opt); });
+			monstersData.forEach(m => { const opt = new Option(m.name, m.name); monsterSelect.add(opt); });
+			weaponsData.forEach(w => {
+				if (!w.name.includes("(両手)")) {
+					weaponSelect.add(new Option(`${w.name} (C:${w.critical}/力:${w.row})`, w.name));
+					secondWeaponSelect.add(new Option(w.name, w.name));
+				}
+			});
+
+			playerSelect.addEventListener("change", () => {
+				const p = playersData.find(x => x.name === playerSelect.value);
+				if (p) { pAddDamage.value = p.additionalDamage; pMaxHp.value = p.maxHp; pDefense.value = p.defense; }
+			});
+			monsterSelect.addEventListener("change", () => {
+				const m = monstersData.find(x => x.name === monsterSelect.value);
+				if (m) { mMaxHp.value = m.hp; mCurrentHp.value = m.hp; mDefense.value = m.defense; mAttack.value = m.attack; }
+			});
+			weaponSelect.addEventListener("change", onWeaponChange);
+			weaponStyle.addEventListener("change", onWeaponStyleChange);
+			onWeaponChange();
+		}
+
+		function onWeaponChange() {
+			const w = weaponsData.find(x => x.name === weaponSelect.value);
+			if (!w) return;
+			weaponStyle.innerHTML = w.usage === "1H" ? '<option value="1">片手持ち固定 (1H)</option>' : w.usage === "2H" ? '<option value="2">両手持ち固定 (2H)</option>' : '<option value="1">片手で使用</option><option value="2">両手で使用</option>';
+			onWeaponStyleChange();
+		}
+
+		function onWeaponStyleChange() {
+			const is2H = weaponStyle.value === "2";
+			document.getElementById("dualWieldDiv").classList.toggle("opacity-disabled", is2H);
+			if (is2H) { secondWeaponSelect.value = "none"; activeHandSelect.value = "right"; }
+		}
+
+		function simulateLocalBattle(params) {
+			let activeWeapon = weaponsData.find(x => x.name === params.weaponName) || { name: params.weaponName, critical: 10, row: 5 };
+			if (params.weaponStyle === "2" && activeWeapon.usage === "1H両") {
+				activeWeapon = weaponsData.find(x => x.name === activeWeapon.name + "(両手)") || activeWeapon;
+			}
+			if (params.weaponStyle !== "2") {
+				if (params.activeHand === "left") {
+					if (params.secondWeaponName) {
+						activeWeapon = weaponsData.find(x => x.name === params.secondWeaponName) || activeWeapon;
+					}
+				}
+			}
+
+			let battleLog = "", totalRollDamage = 0, fumble = false, count = 0;
+			while (true) {
+				count++;
+				const d1 = Math.floor(Math.random() * 6) + 1, d2 = Math.floor(Math.random() * 6) + 1, d3 = d1 + d2;
+				battleLog += `攻撃ロール${count}回目: 出目 ${d3} (${d1}+${d2})<br>`;
+				if (d3 === 2) { battleLog += `<b>ファンブル！自動失敗</b><br>`; fumble = true; totalRollDamage = 0; break; }
+
+				const tableLine = MOCK_DAMAGE_TABLE[activeWeapon.row] || MOCK_DAMAGE_TABLE[0];
+				const baseDmg = tableLine[Math.min(d3 - 2, tableLine.length - 1)];
+				battleLog += `  威力表参照基本値: <b>${baseDmg} ダメージ</b><br>`;
+				totalRollDamage += baseDmg;
+				if (d3 >= activeWeapon.critical) { battleLog += `  <b>クリティカル！継続。</b><br>`; continue; }
+				break;
+			}
+
+			let totalPlayerDmg = fumble ? 0 : (totalRollDamage + parseInt(params.playerAdditionalDamage));
+			let actualMonsterDmg = Math.max(0, totalPlayerDmg - parseInt(params.monsterDefense));
+			let nextMonsterHp = Math.max(0, parseInt(params.monsterCurrentHp) - actualMonsterDmg);
+
+			let monsterCountered = false, md1 = 0, md2 = 0, mdRoll = 0, totalMonsterDmg = 0, actualPlayerDmg = 0, playerNextHp = parseInt(params.playerMaxHp);
+			if (nextMonsterHp > 0) {
+				if (!fumble) {
+					monsterCountered = true; md1 = Math.floor(Math.random() * 6) + 1; md2 = Math.floor(Math.random() * 6) + 1; mdRoll = md1 + md2;
+					totalMonsterDmg = mdRoll + parseInt(params.monsterAttack);
+					actualPlayerDmg = Math.max(0, totalMonsterDmg - parseInt(params.playerDefense));
+					playerNextHp = Math.max(0, parseInt(params.playerMaxHp) - actualPlayerDmg);
+				}
+			}
+
+			return {
+				activeWeaponName: activeWeapon.name, rollDamage: totalRollDamage, fumble,
+				totalPlayerDamage: totalPlayerDmg, actualMonsterDamage: actualMonsterDmg,
+				prevMonsterHp: params.monsterCurrentHp, nextMonsterHp, battleLog,
+				monsterCountered, monsterDice1: md1, monsterDice2: md2, monsterDiceTotal: mdRoll,
+				totalMonsterDamage: totalMonsterDmg, actualPlayerDamage: actualPlayerDmg, playerNextHp
+			};
+		}
+
+		battleBtn.addEventListener("click", async () => {
+			const bodyData = {
+				playerName: playerSelect.value === "custom" ? "手動PC" : playerSelect.value,
+				playerAdditionalDamage: pAddDamage.value, playerMaxHp: pMaxHp.value, playerDefense: pDefense.value,
+				weaponName: weaponSelect.value, weaponStyle: weaponStyle.value, equipHand: equipHand.value,
+				secondWeaponName: secondWeaponSelect.value === "none" ? "" : secondWeaponSelect.value, activeHand: activeHandSelect.value,
+				monsterName: monsterSelect.value === "custom" ? "手動敵" : monsterSelect.value,
+				monsterMaxHp: mMaxHp.value, monsterCurrentHp: mCurrentHp.value, monsterDefense: mDefense.value, monsterAttack: mAttack.value
+			};
+
+			battleVisuals.innerHTML = `<div class="placeholder-box"><i class="fa-solid fa-dice-d6 loader-spin"></i><p>ダイスロール中...</p></div>`;
+			detailLog.classList.add("hidden");
+
+			if (isOfflineMode) {
+				setTimeout(() => { updateBattleUI(simulateLocalBattle(bodyData)); }, 400);
+				return;
+			}
+
+			try {
+				const res = await fetch(`${API_URL}/api/battle`, {
+					method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
+				});
+				if (!res.ok) throw new Error();
+				updateBattleUI(await res.json());
+			} catch {
+				isOfflineMode = true; updateStatusBadge(false);
+				updateBattleUI(simulateLocalBattle(bodyData));
+			}
+		});
+
+		function updateBattleUI(res) {
+			mCurrentHp.value = res.nextMonsterHp;
+			let html = `<div class="log-container animate-fade-in"><div class="phase-card player-phase">`;
+			html += `<h3>⚔️ プレイヤーの攻撃</h3><p class="log-row"><span>使用武器:</span><span style="color: #fde047; font-weight: bold;">${res.activeWeaponName}</span></p>`;
+			html += `<div class="log-row"><span>威力表基本値:</span><span>${res.rollDamage}</span></div>`;
+			html += `<div class="log-row"><span>追加Dボーナス:</span><span>+${pAddDamage.value}</span></div>`;
+			html += `<div class="log-row-total"><span>合計攻撃力:</span><span>${res.totalPlayerDamage}</span></div>`;
+			html += `<div class="dmg-output-badge">与ダメージ: <span>${res.actualMonsterDamage}</span></div></div>`;
+
+			if (res.monsterCountered) {
+				html += `<div class="phase-card monster-phase">`;
+				html += `<h3>🛡️ モンスターの反撃</h3><div class="log-row"><span>反撃出目:</span><span>${res.monsterDiceTotal} (${res.monsterDice1}+${res.monsterDice2})</span></div>`;
+				html += `<div class="log-row"><span>打撃点追加D:</span><span>+${res.totalMonsterDamage - res.monsterDiceTotal}</span></div>`;
+				html += `<div class="log-row-total"><span>モンスター総威力:</span><span>${res.totalMonsterDamage}</span></div>`;
+				html += `<div class="dmg-output-badge" style="color: #f87171;">被ダメージ: <span>${res.actualPlayerDamage}</span></div></div>`;
+			} else {
+				html += `<div class="no-counter-phase">モンスター討伐、または反撃なし</div>`;
+			}
+
+			html += `<div class="hp-summary-box">HP推移<div class="hp-grid">`;
+			html += `<div class="hp-card">敵HP: ${res.prevMonsterHp} ➡️ <span>${res.nextMonsterHp}</span></div>`;
+			html += `<div class="hp-card">PC HP: ${pMaxHp.value} ➡️ <span>${res.playerNextHp}</span></div></div></div></div>`;
+
+			battleVisuals.innerHTML = html;
+			detailLog.innerHTML = `<div class="log-title">システムログ</div>${res.battleLog}`;
+			detailLog.classList.remove("hidden");
+		}
+	</script>
+</body>
+
+</html>
