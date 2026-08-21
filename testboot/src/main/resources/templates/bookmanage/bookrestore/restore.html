@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>書籍の一括復元設定</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 30px;
+		}
+
+		.form-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: inline-block;
+			width: 120px;
+			font-weight: bold;
+		}
+
+		input[type="text"] {
+			width: 300px;
+			padding: 5px;
+		}
+
+		button {
+			padding: 6px 15px;
+			cursor: pointer;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 20px;
+		}
+
+		th, td {
+			border: 1px solid #ccc;
+			padding: 8px;
+			text-align: left;
+		}
+
+		th {
+			background-color: #f2f2f2;
+		}
+
+		.preview-img {
+			max-width: 50px;
+		}
+
+		.restore-list-area {
+			margin-top: 30px;
+			padding: 15px;
+			border: 2px solid #28a745;
+			border-radius: 8px;
+			background-color: #f4fff5;
+		}
+
+		.remove-btn {
+			background-color: #ff9800;
+			color: white;
+			border: none;
+			padding: 4px 8px;
+			border-radius: 4px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>🔄 書籍の一括復元（再表示設定）</h2>
+
+	<!-- メッセージ表示エリア -->
+	<div id="apiMessage" style="margin-bottom: 15px; font-weight: bold; font-size: 15px;"></div>
+
+	<!-- ISBN検索 & 追加フォーム -->
+	<div class="form-group">
+		<label>ISBN:</label>
+		<input type="text" id="inputIsbn" placeholder="復元したい本のISBNを入力">
+		<button type="button" id="addBtn" style="background-color: #007bff; color: white; border: none;">➕ リストに追加</button>
+	</div>
+
+	<!-- 復元対象一時リスト -->
+	<div class="restore-list-area">
+		<h3>♻️ 復元対象リスト（一時保存）</h3>
+		<table>
+			<thead>
+				<tr>
+					<th>表紙</th>
+					<th>ISBN</th>
+					<th>タイトル</th>
+					<th>著者</th>
+					<th>出版社</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody id="restoreTableBody">
+				<!-- JSで動的に追加 -->
+			</tbody>
+		</table>
+
+		<br>
+		<button type="button" id="bulkRestoreBtn" style="background-color: #28a745; color: white; border: none; padding: 10px 20px; font-size: 16px;">
+			🔄 リスト内の書籍を一括復元する
+		</button>
+	</div>
+
+	<br><br>
+	<p>
+		<a th:href="@{/bookmanage}">← ポータル画面に戻る</a>
+	</p>
+
+	<!-- JavaScript処理 -->
+	<script>
+		const apiMessage = document.getElementById('apiMessage');
+		const inputIsbn = document.getElementById('inputIsbn');
+		const restoreTableBody = document.getElementById('restoreTableBody');
+
+		// 一時リスト（ISBNをキーとして重複防止）
+		const restoreList = new Map();
+
+		// 1. ISBN検索 ＆ リスト追加処理
+		document.getElementById('addBtn').addEventListener('click', () => {
+			const isbnVal = inputIsbn.value.trim();
+			if (!isbnVal) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ ISBNを入力してください。';
+				return;
+			}
+
+			if (restoreList.has(isbnVal)) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ すでにリストに存在するISBNです。';
+				return;
+			}
+
+			// 検索API呼び出し
+			fetch(`/books/api/search?isbn=${encodeURIComponent(isbnVal)}`)
+				.then(response => {
+					if (!response.ok) throw new Error('該当する書籍が見つかりませんでした。');
+					return response.json();
+				})
+				.then(data => {
+					// Mapに追加
+					restoreList.set(data.isbn, data);
+					renderTable();
+					inputIsbn.value = '';
+					apiMessage.textContent = '';
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+
+		// テーブルの再描画
+		function renderTable() {
+			restoreTableBody.innerHTML = '';
+
+			restoreList.forEach((book, isbn) => {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>${book.thumbnailUrl ? `<img src="${book.thumbnailUrl}" class="preview-img">` : '-'}</td>
+					<td>${book.isbn || '-'}</td>
+					<td>${book.title || '-'}</td>
+					<td>${book.author || '-'}</td>
+					<td>${book.publisher || '-'}</td>
+					<td><button class="remove-btn" onclick="removeFromList('${isbn}')">除外</button></td>
+				`;
+				restoreTableBody.appendChild(tr);
+			});
+		}
+
+		// リストから1件除外
+		function removeFromList(isbn) {
+			restoreList.delete(isbn);
+			renderTable();
+		}
+
+		// 2. 一括復元実行処理
+		document.getElementById('bulkRestoreBtn').addEventListener('click', () => {
+			if (restoreList.size === 0) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ 復元対象の書籍がリストにありません。';
+				return;
+			}
+
+			if (!confirm(`リストにある ${restoreList.size} 件の書籍を復元（再表示）してもよろしいですか？`)) {
+				return;
+			}
+
+			// ISBNの配列を作成
+			const isbnArray = Array.from(restoreList.keys());
+
+			fetch('/books/restore/bulk', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(isbnArray)
+			})
+				.then(response => {
+					if (!response.ok) throw new Error('一括復元処理に失敗しました。');
+					return response.text();
+				})
+				.then(message => {
+					apiMessage.style.color = 'green';
+					apiMessage.textContent = '✅ ' + message;
+					restoreList.clear(); // リスト初期化
+					renderTable();
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+	</script>
+
+</body>
+
+</html>

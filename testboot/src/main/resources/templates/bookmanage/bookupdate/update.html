@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>書籍情報の編集</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 30px;
+		}
+
+		.form-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: inline-block;
+			width: 120px;
+			font-weight: bold;
+		}
+
+		input[type="text"] {
+			width: 300px;
+			padding: 5px;
+		}
+
+		button {
+			padding: 5px 15px;
+			cursor: pointer;
+		}
+
+		.preview-img {
+			max-width: 80px;
+			display: block;
+		}
+
+		.preview-card {
+			margin-top: 20px;
+			padding: 15px;
+			border: 2px dashed #4CAF50;
+			border-radius: 8px;
+			background-color: #f9fbf9;
+			max-width: 450px;
+		}
+
+		.preview-card h3 {
+			margin-top: 0;
+			color: #2E7D32;
+			border-bottom: 1px solid #c8e6c9;
+			padding-bottom: 8px;
+		}
+
+		.preview-item {
+			margin-bottom: 8px;
+		}
+
+		.preview-label {
+			font-weight: bold;
+			color: #555;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>✏️ 書籍情報の編集</h2>
+
+	<!-- メッセージ表示エリア -->
+	<div id="apiMessage" style="margin-bottom: 15px; font-weight: bold; font-size: 15px;"></div>
+
+	<!-- 本情報編集フォーム -->
+	<form id="bookEditForm" th:object="${bookDto}">
+
+		<div class="form-group">
+			<label>ISBN:</label>
+			<input type="text" id="inputIsbn" th:field="*{isbn}" placeholder="ISBNを入力してください">
+			<button type="button" id="searchBtn" style="background-color: #007bff; color: white; border: none;">🔍 検索</button>
+		</div>
+
+		<div class="form-group">
+			<label>タイトル:</label>
+			<input type="text" id="inputTitle" th:field="*{title}" required>
+		</div>
+
+		<div class="form-group">
+			<label>著者:</label>
+			<input type="text" id="inputAuthor" th:field="*{author}">
+		</div>
+
+		<div class="form-group">
+			<label>出版社:</label>
+			<input type="text" id="inputPublisher" th:field="*{publisher}">
+		</div>
+
+		<div class="form-group">
+			<label>サムネイルURL:</label>
+			<input type="text" id="inputThumbnailUrl" th:field="*{thumbnailUrl}">
+		</div>
+
+		<br>
+		<button type="button" id="updateBtn"
+			style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; font-size: 16px;">
+			💾 変更内容を更新する
+		</button>
+	</form>
+
+	<!-- リアルタイムプレビューエリア -->
+	<div class="preview-card">
+		<h3>🔍 リアルタイムプレビュー</h3>
+		<div class="preview-item">
+			<span class="preview-label">ISBN:</span> <span id="pvIsbn"></span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">タイトル:</span> <span id="pvTitle"></span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">著者:</span> <span id="pvAuthor"></span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">出版社:</span> <span id="pvPublisher"></span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">表紙画像:</span>
+			<img id="pvImage" src="" alt="表紙プレビュー" class="preview-img" style="display: none;">
+		</div>
+	</div>
+
+	<!-- JavaScript処理 -->
+	<script>
+		const apiMessage = document.getElementById('apiMessage');
+
+		// 入力要素
+		const inputIsbn = document.getElementById('inputIsbn');
+		const inputTitle = document.getElementById('inputTitle');
+		const inputAuthor = document.getElementById('inputAuthor');
+		const inputPublisher = document.getElementById('inputPublisher');
+		const inputThumbnailUrl = document.getElementById('inputThumbnailUrl');
+
+		// プレビュー要素
+		const pvIsbn = document.getElementById('pvIsbn');
+		const pvTitle = document.getElementById('pvTitle');
+		const pvAuthor = document.getElementById('pvAuthor');
+		const pvPublisher = document.getElementById('pvPublisher');
+		const pvImage = document.getElementById('pvImage');
+
+		// プレビュー更新関数
+		function updatePreview() {
+			pvIsbn.textContent = inputIsbn.value.trim() || '未入力';
+			pvTitle.textContent = inputTitle.value.trim() || '未入力';
+			pvAuthor.textContent = inputAuthor.value.trim() || '未入力';
+			pvPublisher.textContent = inputPublisher.value.trim() || '未入力';
+
+			if (inputThumbnailUrl.value.trim()) {
+				pvImage.src = inputThumbnailUrl.value.trim();
+				pvImage.style.display = 'block';
+			} else {
+				pvImage.style.display = 'none';
+				pvImage.src = '';
+			}
+		}
+
+		// ISBN検索処理
+		function searchBook() {
+			const isbnVal = inputIsbn.value.trim();
+			if (!isbnVal) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ 検索用のISBNを入力してください。';
+				return;
+			}
+
+			fetch(`/books/api/search?isbn=${encodeURIComponent(isbnVal)}`)
+				.then(response => {
+					if (!response.ok) throw new Error('該当する書籍が見つかりませんでした。');
+					return response.json();
+				})
+				.then(data => {
+					// 取得したデータを各フォームに入力
+					inputTitle.value = data.title || '';
+					inputAuthor.value = data.author || '';
+					inputPublisher.value = data.publisher || '';
+					inputThumbnailUrl.value = data.thumbnailUrl || '';
+
+					apiMessage.style.color = 'blue';
+					apiMessage.textContent = 'ℹ️ データを読み込みました。編集後に更新ボタンを押してください。';
+					
+					// プレビューを更新
+					updatePreview();
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		}
+
+		// イベントリスナー設定
+		document.getElementById('searchBtn').addEventListener('click', searchBook);
+		
+		inputTitle.addEventListener('input', updatePreview);
+		inputAuthor.addEventListener('input', updatePreview);
+		inputPublisher.addEventListener('input', updatePreview);
+		inputThumbnailUrl.addEventListener('input', updatePreview);
+
+		document.addEventListener('DOMContentLoaded', updatePreview);
+
+		// 更新ボタン処理
+		document.getElementById('updateBtn').addEventListener('click', () => {
+			const titleVal = inputTitle.value.trim();
+
+			if (!titleVal) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ タイトルは必須入力です。';
+				return;
+			}
+
+			const updateData = {
+				isbn: inputIsbn.value.trim(),
+				title: titleVal,
+				author: inputAuthor.value.trim(),
+				publisher: inputPublisher.value.trim(),
+				thumbnailUrl: inputThumbnailUrl.value.trim()
+			};
+
+			fetch('/books/update', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(updateData)
+			})
+				.then(response => {
+					if (!response.ok) throw new Error('更新処理に失敗しました。');
+					return response.text();
+				})
+				.then(message => {
+					apiMessage.style.color = 'green';
+					apiMessage.textContent = '✅ ' + message;
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+	</script>
+
+</body>
+
+</html>

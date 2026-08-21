@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>書籍管理ポータル</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 30px;
+		}
+
+		.menu-btn {
+			display: inline-block;
+			padding: 10px 20px;
+			background-color: #007bff;
+			color: white;
+			text-decoration: none;
+			border-radius: 5px;
+		}
+
+		.menu-btn.delete {
+			background-color: #dc3545;
+			/* 削除ボタンのみ赤色 */
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>📖 書籍管理ポータル</h2>
+
+	<hr>
+
+	<p>
+		<a th:href="@{/books/register}" class="menu-btn">📚 新しい本を登録する</a>
+	</p>
+
+	<p>
+		<a th:href="@{/books/edit}" class="menu-btn">✏️ 本を更新・編集する</a>
+	</p>
+
+	<p>
+		<a th:href="@{/books/delete}" class="menu-btn delete">🗑️ 本を削除する</a>
+	</p>
+
+	<p>
+		<a th:href="@{/books/restore}" class="menu-btn" style="background-color: #28a745;">🔄 本を復元する</a>
+	</p>
+
+	<br>
+	<p>
+		<a href="/" th:href="@{/}">← トップ画面に戻る</a>
+	</p>
+
+</body>
+
+</html>

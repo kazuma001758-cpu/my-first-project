@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>書籍登録</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 30px;
+		}
+
+		.form-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: inline-block;
+			width: 120px;
+			font-weight: bold;
+		}
+
+		input[type="text"] {
+			width: 300px;
+			padding: 5px;
+		}
+
+		button {
+			padding: 5px 15px;
+			cursor: pointer;
+		}
+
+		.message {
+			color: red;
+			margin-bottom: 10px;
+		}
+
+		.success {
+			color: green;
+			margin-bottom: 10px;
+		}
+
+		.preview-img {
+			max-width: 80px;
+			display: block;
+		}
+
+		.preview-card {
+			margin-top: 20px;
+			padding: 15px;
+			border: 2px dashed #4CAF50;
+			border-radius: 8px;
+			background-color: #f9fbf9;
+			max-width: 450px;
+		}
+
+		.preview-card h3 {
+			margin-top: 0;
+			color: #2E7D32;
+			border-bottom: 1px solid #c8e6c9;
+			padding-bottom: 8px;
+		}
+
+		.preview-item {
+			margin-bottom: 8px;
+		}
+
+		.preview-label {
+			font-weight: bold;
+			color: #555;
+		}
+
+		.temp-list-area {
+			margin-top: 30px;
+			padding-top: 20px;
+			border-top: 2px solid #ddd;
+		}
+
+		table.list-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+		}
+
+		table.list-table th,
+		table.list-table td {
+			border: 1px solid #ccc;
+			padding: 8px;
+			text-align: left;
+		}
+
+		table.list-table th {
+			background-color: #f2f2f2;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>📚 書籍登録</h2>
+
+	<!-- メッセージ表示エリア（JavaScriptから動的に制御） -->
+	<div id="apiMessage" style="margin-bottom: 15px; font-weight: bold; font-size: 15px;"></div>
+
+	<!-- Thymeleaf用メッセージ表示（初期表示時用） -->
+	<p th:if="${message}" th:text="${message}" class="message"></p>
+	<p th:if="${successMessage}" th:text="${successMessage}" class="success"></p>
+
+	<!-- 1. ISBN検索エリア -->
+	<div style="margin-bottom: 20px; background: #f5f5f5; padding: 15px; border-radius: 5px;">
+		<div class="form-group">
+			<label for="searchIsbn">ISBN検索:</label>
+			<input type="text" id="searchIsbn" placeholder="例: 9784798157573">
+			<button type="button" id="searchBtn">国会図書館から自動取得</button>
+		</div>
+	</div>
+
+	<hr>
+
+	<!-- 2. 本情報入力フォーム -->
+	<form id="bookInputForm" th:object="${bookDto}">
+
+		<div class="form-group">
+			<label>ISBN (主キー):</label>
+			<input type="text" id="inputIsbn" th:field="*{isbn}" required>
+		</div>
+
+		<div class="form-group">
+			<label>タイトル:</label>
+			<input type="text" id="inputTitle" th:field="*{title}" required>
+		</div>
+
+		<div class="form-group">
+			<label>著者:</label>
+			<input type="text" id="inputAuthor" th:field="*{author}">
+		</div>
+
+		<div class="form-group">
+			<label>出版社:</label>
+			<input type="text" id="inputPublisher" th:field="*{publisher}">
+		</div>
+
+		<div class="form-group">
+			<label>サムネイルURL:</label>
+			<input type="text" id="inputThumbnailUrl" th:field="*{thumbnailUrl}">
+		</div>
+
+		<br>
+		<button type="button" id="addToListBtn"
+			style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; font-size: 16px;">
+			➕ 一時リストに追加
+		</button>
+	</form>
+
+	<!-- 3. リアルタイムプレビューエリア -->
+	<div class="preview-card">
+		<h3>🔍 リアルタイムプレビュー</h3>
+		<div class="preview-item">
+			<span class="preview-label">ISBN:</span> <span id="pvIsbn">未入力</span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">タイトル:</span> <span id="pvTitle">未入力</span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">著者:</span> <span id="pvAuthor">未入力</span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">出版社:</span> <span id="pvPublisher">未入力</span>
+		</div>
+		<div class="preview-item">
+			<span class="preview-label">表紙画像:</span>
+			<img id="pvImage" src="" alt="表紙プレビュー" class="preview-img" style="display: none;">
+		</div>
+	</div>
+
+	<!-- 4. 一時保存リスト表示エリア -->
+	<div class="temp-list-area">
+		<h3>📋 登録待ちリスト (<span id="tempCount">0</span>件)</h3>
+
+		<table class="list-table">
+			<thead>
+				<tr>
+					<th>ISBN</th>
+					<th>タイトル</th>
+					<th>著者</th>
+					<th>出版社</th>
+					<th>画像</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody id="tempListBody">
+			</tbody>
+		</table>
+
+		<br>
+		<button type="button" id="saveAllBtn"
+			style="background-color: #4CAF50; color: white; border: none; padding: 12px 24px; font-size: 16px; width: 100%;">
+			💾 上記のリストをまとめてDBに一括登録する
+		</button>
+	</div>
+
+	<!-- JavaScript処理 -->
+	<script>
+		// メッセージ表示要素
+		const apiMessage = document.getElementById('apiMessage');
+
+		// 入力要素
+		const inputIsbn = document.getElementById('inputIsbn');
+		const inputTitle = document.getElementById('inputTitle');
+		const inputAuthor = document.getElementById('inputAuthor');
+		const inputPublisher = document.getElementById('inputPublisher');
+		const inputThumbnailUrl = document.getElementById('inputThumbnailUrl');
+
+		// プレビュー要素
+		const pvIsbn = document.getElementById('pvIsbn');
+		const pvTitle = document.getElementById('pvTitle');
+		const pvAuthor = document.getElementById('pvAuthor');
+		const pvPublisher = document.getElementById('pvPublisher');
+		const pvImage = document.getElementById('pvImage');
+
+		// 一時データ保持用の配列
+		let tempBookList = [];
+
+		// プレビュー更新関数
+		function updatePreview() {
+			pvIsbn.textContent = inputIsbn.value.trim() || '未入力';
+			pvTitle.textContent = inputTitle.value.trim() || '未入力';
+			pvAuthor.textContent = inputAuthor.value.trim() || '未入力';
+			pvPublisher.textContent = inputPublisher.value.trim() || '未入力';
+
+			if (inputThumbnailUrl.value.trim()) {
+				pvImage.src = inputThumbnailUrl.value.trim();
+				pvImage.style.display = 'block';
+			} else {
+				pvImage.style.display = 'none';
+				pvImage.src = '';
+			}
+		}
+
+		// イベントリスナー
+		inputIsbn.addEventListener('input', updatePreview);
+		inputTitle.addEventListener('input', updatePreview);
+		inputAuthor.addEventListener('input', updatePreview);
+		inputPublisher.addEventListener('input', updatePreview);
+		inputThumbnailUrl.addEventListener('input', updatePreview);
+		document.addEventListener('DOMContentLoaded', updatePreview);
+
+		// ★【修正】ISBN非同期検索処理 (メッセージを画面に表示)
+		document.getElementById('searchBtn').addEventListener('click', () => {
+			const searchIsbn = document.getElementById('searchIsbn').value.trim();
+
+			if (!searchIsbn) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ 検索するISBNを入力してください。';
+				return;
+			}
+
+			// 検索中メッセージ
+			apiMessage.style.color = '#2196F3';
+			apiMessage.textContent = '🔄 国会図書館APIを検索中...';
+
+			fetch('/books/search', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: 'isbn=' + encodeURIComponent(searchIsbn)
+			})
+				.then(response => {
+					if (!response.ok) throw new Error('通信エラーが発生しました。');
+					return response.json();
+				})
+				.then(data => {
+					// 取得したデータを入力項目に自動セット
+					inputIsbn.value = data.isbn || '';
+					inputTitle.value = data.title || '';
+					inputAuthor.value = data.author || '';
+					inputPublisher.value = data.publisher || '';
+					inputThumbnailUrl.value = data.thumbnailUrl || '';
+
+					// プレビューを即座に更新
+					updatePreview();
+
+					// 検索結果に応じたメッセージ制御
+					if (data.title) {
+						apiMessage.style.color = 'green';
+						apiMessage.textContent = '✅ 書籍情報を取得しました！内容を確認して「一時リストに追加」を押してください。';
+					} else {
+						apiMessage.style.color = '#ff9800'; // オレンジ色
+						apiMessage.textContent = '⚠️ 該当する書籍情報が見つかりませんでした。タイトルや著者を手動で入力してください。';
+					}
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ 通信エラーまたはタイムアウトが発生しました。時間を置いてやり直すか手動で入力してください。';
+					console.error(error);
+				});
+		});
+
+		// 「一時リストに追加」ボタン処理
+		document.getElementById('addToListBtn').addEventListener('click', () => {
+			const isbnVal = inputIsbn.value.trim();
+			const titleVal = inputTitle.value.trim();
+
+			if (!isbnVal || !titleVal) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ ISBNとタイトルは必須入力です。';
+				return;
+			}
+
+			const isDuplicate = tempBookList.some(book => book.isbn === isbnVal);
+			if (isDuplicate) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ このISBNはすでに一時リストに追加されています。';
+				return;
+			}
+
+			const bookData = {
+				isbn: isbnVal,
+				title: titleVal,
+				author: inputAuthor.value.trim(),
+				publisher: inputPublisher.value.trim(),
+				thumbnailUrl: inputThumbnailUrl.value.trim()
+			};
+
+			tempBookList.push(bookData);
+			renderTempList();
+
+			// メッセージ・フォーム初期化
+			apiMessage.style.color = 'green';
+			apiMessage.textContent = `➕ 「${titleVal}」を一時リストに追加しました。`;
+			document.getElementById('searchIsbn').value = '';
+			inputIsbn.value = '';
+			inputTitle.value = '';
+			inputAuthor.value = '';
+			inputPublisher.value = '';
+			inputThumbnailUrl.value = '';
+			updatePreview();
+		});
+
+		// テーブル描画関数
+		function renderTempList() {
+			const tbody = document.getElementById('tempListBody');
+			tbody.innerHTML = '';
+
+			tempBookList.forEach((book, index) => {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>${book.isbn}</td>
+					<td>${book.title}</td>
+					<td>${book.author || '-'}</td>
+					<td>${book.publisher || '-'}</td>
+					<td>${book.thumbnailUrl ? `<img src="${book.thumbnailUrl}" class="preview-img">` : '-'}</td>
+					<td><button type="button" onclick="removeBook(${index})" style="background:#f44336; color:white; border:none; padding:5px 10px;">削除</button></td>
+				`;
+				tbody.appendChild(tr);
+			});
+
+			document.getElementById('tempCount').textContent = tempBookList.length;
+		}
+
+		function removeBook(index) {
+			tempBookList.splice(index, 1);
+			renderTempList();
+			apiMessage.textContent = '';
+		}
+
+		// 一括登録処理
+		document.getElementById('saveAllBtn').addEventListener('click', () => {
+			if (tempBookList.length === 0) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ 一時リストに書籍がありません。';
+				return;
+			}
+
+			if (!confirm(tempBookList.length + '件の書籍をDBに保存します。よろしいですか？')) {
+				return;
+			}
+
+			fetch('/books/register-batch', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(tempBookList)
+			})
+				.then(response => {
+					if (!response.ok) throw new Error('一括保存に失敗しました。');
+					return response.text();
+				})
+				.then(message => {
+					apiMessage.style.color = 'green';
+					apiMessage.textContent = '🎉 ' + message;
+					tempBookList = [];
+					renderTempList();
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+	</script>
+
+</body>
+
+</html>

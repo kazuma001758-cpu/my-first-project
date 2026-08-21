@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>書籍の一括削除設定</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 30px;
+		}
+
+		.form-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: inline-block;
+			width: 120px;
+			font-weight: bold;
+		}
+
+		input[type="text"] {
+			width: 300px;
+			padding: 5px;
+		}
+
+		button {
+			padding: 6px 15px;
+			cursor: pointer;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 20px;
+		}
+
+		th, td {
+			border: 1px solid #ccc;
+			padding: 8px;
+			text-align: left;
+		}
+
+		th {
+			background-color: #f2f2f2;
+		}
+
+		.preview-img {
+			max-width: 50px;
+		}
+
+		.delete-list-area {
+			margin-top: 30px;
+			padding: 15px;
+			border: 2px solid #f44336;
+			border-radius: 8px;
+			background-color: #fdf2f2;
+		}
+
+		.remove-btn {
+			background-color: #ff9800;
+			color: white;
+			border: none;
+			padding: 4px 8px;
+			border-radius: 4px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>🗑️ 書籍の一括削除（非表示設定）</h2>
+
+	<!-- メッセージ表示エリア -->
+	<div id="apiMessage" style="margin-bottom: 15px; font-weight: bold; font-size: 15px;"></div>
+
+	<!-- ISBN検索 & 追加フォーム -->
+	<div class="form-group">
+		<label>ISBN:</label>
+		<input type="text" id="inputIsbn" placeholder="削除したい本のISBNを入力">
+		<button type="button" id="addBtn" style="background-color: #007bff; color: white; border: none;">➕ リストに追加</button>
+	</div>
+
+	<!-- 削除対象一時リスト -->
+	<div class="delete-list-area">
+		<h3>⚠️ 削除対象リスト（一時保存）</h3>
+		<table>
+			<thead>
+				<tr>
+					<th>表紙</th>
+					<th>ISBN</th>
+					<th>タイトル</th>
+					<th>著者</th>
+					<th>出版社</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody id="deleteTableBody">
+				<!-- JSで動的に追加 -->
+			</tbody>
+		</table>
+
+		<br>
+		<button type="button" id="bulkDeleteBtn" style="background-color: #f44336; color: white; border: none; padding: 10px 20px; font-size: 16px;">
+			🗑️ リスト内の書籍を一括削除する
+		</button>
+	</div>
+
+	<br><br>
+	<p>
+		<a th:href="@{/bookmanage}">← ポータル画面に戻る</a>
+	</p>
+
+	<!-- JavaScript処理 -->
+	<script>
+		const apiMessage = document.getElementById('apiMessage');
+		const inputIsbn = document.getElementById('inputIsbn');
+		const deleteTableBody = document.getElementById('deleteTableBody');
+
+		// 一時リスト（ISBNをキーとして重複を防止）
+		const deleteList = new Map();
+
+		// 1. ISBN検索 ＆ リスト追加処理
+		document.getElementById('addBtn').addEventListener('click', () => {
+			const isbnVal = inputIsbn.value.trim();
+			if (!isbnVal) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ ISBNを入力してください。';
+				return;
+			}
+
+			if (deleteList.has(isbnVal)) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ すでにリストに存在するISBNです。';
+				return;
+			}
+
+			// 検索API呼び出し
+			fetch(`/books/api/search?isbn=${encodeURIComponent(isbnVal)}`)
+				.then(response => {
+					if (!response.ok) throw new Error('該当する書籍が見つかりませんでした。');
+					return response.json();
+				})
+				.then(data => {
+					// Mapに追加
+					deleteList.set(data.isbn, data);
+					renderTable();
+					inputIsbn.value = '';
+					apiMessage.textContent = '';
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+
+		// テーブルの再描画
+		function renderTable() {
+			deleteTableBody.innerHTML = '';
+
+			deleteList.forEach((book, isbn) => {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>${book.thumbnailUrl ? `<img src="${book.thumbnailUrl}" class="preview-img">` : '-'}</td>
+					<td>${book.isbn || '-'}</td>
+					<td>${book.title || '-'}</td>
+					<td>${book.author || '-'}</td>
+					<td>${book.publisher || '-'}</td>
+					<td><button class="remove-btn" onclick="removeFromList('${isbn}')">除外</button></td>
+				`;
+				deleteTableBody.appendChild(tr);
+			});
+		}
+
+		// リストから1件除外
+		function removeFromList(isbn) {
+			deleteList.delete(isbn);
+			renderTable();
+		}
+
+		// 2. 一括削除実行処理
+		document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
+			if (deleteList.size === 0) {
+				apiMessage.style.color = 'red';
+				apiMessage.textContent = '⚠️ 削除対象の書籍がリストにありません。';
+				return;
+			}
+
+			if (!confirm(`リストにある ${deleteList.size} 件の書籍を削除（非表示）にしてもよろしいですか？`)) {
+				return;
+			}
+
+			// ISBNの配列を作成
+			const isbnArray = Array.from(deleteList.keys());
+
+			fetch('/books/delete/bulk', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(isbnArray)
+			})
+				.then(response => {
+					if (!response.ok) throw new Error('一括削除処理に失敗しました。');
+					return response.text();
+				})
+				.then(message => {
+					apiMessage.style.color = 'green';
+					apiMessage.textContent = '✅ ' + message;
+					deleteList.clear(); // リスト初期化
+					renderTable();
+				})
+				.catch(error => {
+					apiMessage.style.color = 'red';
+					apiMessage.textContent = '❌ ' + error.message;
+				});
+		});
+	</script>
+
+</body>
+
+</html>
